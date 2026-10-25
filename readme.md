@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/fceuX.png" alt="fceuX" width="320">
+</p>
+
 # fceuX
 
 fceuX is a Windows fork of [FCEUX](https://github.com/TASEmulators/fceux) with Miracle Piano support and quality-of-life changes.
