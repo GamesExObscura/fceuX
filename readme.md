@@ -16,6 +16,10 @@ fceuX is a Windows fork of [FCEUX](https://github.com/TASEmulators/fceux) with M
 * Delayed piano focus return to the main game window.
 * Persistent input-device selections and live controller/peripheral switching.
 * Borderless fullscreen with automatically hidden menus revealed at the top mouse edge.
+* Update check: a startup pop-up only when a newer release exists (never during a game), Help > Check for Updates, and a Help setting to turn the startup check off.
+* fceuX -v / --version prints the version for front ends such as LaunchBox.
+
+The update check makes one HTTPS request to GitHub's releases API when fceuX starts (or when you choose Check for Updates) and sends nothing but the request itself. Turn it off under Help.
 
 ## Building
 

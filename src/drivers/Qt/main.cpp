@@ -27,6 +27,7 @@
 #include "Qt/ConsoleWindow.h"
 #include "Qt/fceuWrapper.h"
 #include "Qt/MiracleWindow.h"
+#include "Qt/UpdateCheck.h"
 #include "Qt/SplashScreen.h"
 #include "Qt/QtScriptManager.h"
 
@@ -107,6 +108,15 @@ int main( int argc, char *argv[] )
 {
 	int retval = 0;
 
+#ifdef _WIN32
+	// fceuX.exe -v: print the version and leave before anything is created
+	if ( argc == 2 && fceuxUpdate::isVersionFlag(argv[1]) )
+	{
+		fceuxUpdate::printVersion();
+		return 0;
+	}
+#endif
+
 	fceuWrapperPreInit(argc, argv);
 
 	qInstallMessageHandler(MessageOutput);
@@ -160,6 +170,7 @@ int main( int argc, char *argv[] )
 	consoleWindow = new consoleWin_t();
 
 	consoleWindow->show();
+	consoleWindow->startupUpdateCheck();
 
 	// Need to wait for window to initialize before video init can be called.
 	//consoleWindow->videoInit();

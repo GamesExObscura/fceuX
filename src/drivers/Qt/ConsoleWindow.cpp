@@ -41,6 +41,8 @@
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QPointer>
+#include <QUrl>
 #include <QInputDialog>
 #include <QDesktopServices>
 #include <QStyleFactory>
@@ -120,6 +122,9 @@
 #include "Qt/nes_shm.h"
 #include "Qt/NetPlay.h"
 #include "Qt/TasEditor/TasEditorWindow.h"
+#include "Qt/UpdateCheck.h"
+
+#include <thread>
 
 #ifdef __APPLE__
 void qt_set_sequence_auto_mnemonic(bool enable);
@@ -2249,6 +2254,24 @@ void consoleWin_t::createMainMenu(void)
 	connect(msgLogAct, SIGNAL(triggered()), this, SLOT(openMsgLogWin(void)) );
 	
 	helpMenu->addAction(msgLogAct);
+
+	// Help -> Check for updates
+	updateCheckAct = new QAction(tr("Check for &Updates..."), this);
+	updateCheckAct->setStatusTip(tr("Look for a newer fceuX release on GitHub"));
+	connect(updateCheckAct, SIGNAL(triggered()), this, SLOT(checkForUpdatesCB(void)) );
+	helpMenu->addAction(updateCheckAct);
+
+	// Help -> Check for updates at startup
+	updateStartupAct = new QAction(tr("Check for Updates at &Startup"), this);
+	updateStartupAct->setStatusTip(tr("Ask GitHub for a newer release each time fceuX starts"));
+	updateStartupAct->setCheckable(true);
+	{
+		bool checkAtStartup = true;
+		g_config->getOption( "SDL.CheckForUpdates", &checkAtStartup );
+		updateStartupAct->setChecked( checkAtStartup );
+	}
+	connect(updateStartupAct, SIGNAL(toggled(bool)), this, SLOT(toggleUpdateStartupCB(bool)) );
+	helpMenu->addAction(updateStartupAct);
 
 	// Help -> Documentation Online
 	subMenu = helpMenu->addMenu( tr("&Documentation") );
@@ -4664,6 +4687,84 @@ void consoleWin_t::aboutFCEUX(void)
 	
 	aboutWin->show();
 	return;
+}
+
+void consoleWin_t::toggleUpdateStartupCB(bool checked)
+{
+	g_config->setOption( "SDL.CheckForUpdates", checked );
+	g_config->save();
+}
+
+void consoleWin_t::checkForUpdatesCB(void)
+{
+	startUpdateCheck(true);
+}
+
+// The startup check never interrupts a game: with one loaded (or while
+// fullscreen) it stays quiet and the next start asks again.
+void consoleWin_t::startupUpdateCheck(void)
+{
+	bool checkAtStartup = true;
+	g_config->getOption( "SDL.CheckForUpdates", &checkAtStartup );
+	if ( checkAtStartup )
+	{
+		startUpdateCheck(false);
+	}
+}
+
+// Asks on a thread of its own, so a slow or absent network never holds up the
+// window, and hands the answer back to the GUI thread.
+void consoleWin_t::startUpdateCheck(bool asked)
+{
+	static bool running = false;
+	if ( running )
+	{
+		return;
+	}
+	running = true;
+
+	QPointer<consoleWin_t> self(this);
+
+	std::thread([self, asked] {
+		const std::string latest = fceuxUpdate::fetchLatestFceuxTag();
+
+		QMetaObject::invokeMethod(qApp, [self, asked, latest] {
+			running = false;
+			if ( self.isNull() )
+			{
+				return;
+			}
+			const QString running_ = QString("v") + FCEUX_FORK_VERSION;
+
+			if ( latest.empty() )
+			{
+				if ( asked )
+				{
+					QMessageBox::warning( self, "fceuX", tr("fceuX couldn't reach GitHub to check for a new version. Check your internet connection and try again.") );
+				}
+				return;
+			}
+			if ( fceuxUpdate::parseVersion(latest) <= fceuxUpdate::parseVersion(FCEUX_FORK_VERSION) )
+			{
+				if ( asked )
+				{
+					QMessageBox::information( self, "fceuX", tr("You have the latest version of fceuX (%1).").arg(running_) );
+				}
+				return;
+			}
+			if ( !asked && ( GameInfo != nullptr || self->isFullScreen() ) )
+			{
+				return;
+			}
+			const QString text = tr("You have fceuX %1.\nfceuX %2 is available.\n\nOpen the download page?")
+				.arg(running_, QString::fromStdString(latest));
+
+			if ( QMessageBox::question( self, "fceuX - New version", text ) == QMessageBox::Yes )
+			{
+				QDesktopServices::openUrl( QUrl( fceuxUpdate::releasesPage() ) );
+			}
+		}, Qt::QueuedConnection);
+	}).detach();
 }
 
 void consoleWin_t::aboutQt(void)

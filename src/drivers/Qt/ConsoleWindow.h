@@ -129,6 +129,9 @@ class  consoleWin_t : public QMainWindow
 		consoleWin_t(QWidget *parent = 0);
 		~consoleWin_t(void);
 
+		void startupUpdateCheck(void);
+		void startUpdateCheck(bool asked);
+
 		ConsoleViewGL_t       *viewport_GL;
 		ConsoleViewSDL_t      *viewport_SDL;
 		ConsoleViewQWidget_t  *viewport_QWidget;
@@ -228,6 +231,8 @@ class  consoleWin_t : public QMainWindow
 		QAction *aboutAct;
 		QAction *aboutActQt;
 		QAction *msgLogAct;
+		QAction *updateCheckAct;
+		QAction *updateStartupAct;
 		QAction *state[10];
 		QAction *powerAct;
 		QAction *resetAct;
@@ -360,6 +365,8 @@ class  consoleWin_t : public QMainWindow
 		void closeROMCB(void);
 		void aboutFCEUX(void);
 		void aboutQt(void);
+		void checkForUpdatesCB(void);
+		void toggleUpdateStartupCB(bool);
 		void openOnlineDocs(void);
 		void openOfflineDocs(void);
 		void openTasEditor(void);
